@@ -63,8 +63,28 @@ def test_location_extracted_from_free_text_practical_info():
     g = Graph()
     item = process_event(record, g)
     place = next(g.objects(item, SDO.location))
+    assert isinstance(place, URIRef)
     assert (place, None, SDO.Place) in g
     assert str(next(g.objects(place, SDO.name))) == "IISH, Cruquiusweg 31, Amsterdam"
+
+
+def test_events_sharing_the_same_location_text_share_one_place_iri():
+    """documentary-slaves-empire and the CGM workshop both state the venue as
+    the exact same string -- confirming the slug-keyed Place IRI (not a
+    blank node) lets them interlink instead of minting an unlinkable
+    duplicate per event, and makes the Place navigable in a viewer."""
+    paths = [
+        FIXTURES_DIR / "documentary-slaves-empire.html",
+        FIXTURES_DIR / "cgm-workshop-migration-researchers-and-public-debate.html",
+    ]
+    g = Graph()
+    places = set()
+    for path in paths:
+        fixture = load_fixture(path)
+        record = parse_event_page(fixture["html"], fixture["url"], thumbnail_url=fixture["thumbnail_url"])
+        item = process_event(record, g)
+        places.add(next(g.objects(item, SDO.location)))
+    assert len(places) == 1
 
 
 def test_language_name_resolves_to_lexvo_iri():

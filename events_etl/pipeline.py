@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import re
+
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.namespace import XSD
 
 from . import nde_ap
 from .parse import LANGUAGE_NAME_TO_ISO639_3
-from .prefixes import EVENT, LEXVO_ISO639_3, SDO
+from .prefixes import EVENT, LEXVO_ISO639_3, PLACE, SDO
+
+
+def _slugify(text: str) -> str:
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", text.lower())).strip("-")
 
 
 def process_event(record: dict, g: Graph) -> URIRef | None:
@@ -36,10 +42,12 @@ def process_event(record: dict, g: Graph) -> URIRef | None:
         g.add((item, SDO.dateModified, Literal(record["date_modified"].isoformat(), datatype=XSD.dateTime)))
 
     if record.get("location"):
-        place = BNode()
-        g.add((place, RDF.type, SDO.Place))
-        g.add((place, SDO.name, Literal(record["location"])))
-        g.add((item, SDO.location, place))
+        slug = _slugify(record["location"])
+        if slug:
+            place = PLACE[slug]
+            g.add((place, RDF.type, SDO.Place))
+            g.add((place, SDO.name, Literal(record["location"])))
+            g.add((item, SDO.location, place))
 
     language_code = LANGUAGE_NAME_TO_ISO639_3.get((record.get("language_name") or "").lower())
     if language_code:
